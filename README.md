@@ -49,6 +49,8 @@ The **Email Connector** provides simplified APIs to integrate with any email ser
 ### 1. Importing the Email Connector into Your Project
 - Download the latest **email-connector** zip [here](https://github.com/wm-marketplace/email-connector-master/releases).
 - Import the downloaded zip into your app using the **Import Resource** option under the **Connector** folder.
+![image](https://github.com/user-attachments/assets/134375f6-2400-41d1-b737-6a58aee4c1eb)
+![image](https://github.com/user-attachments/assets/9f51e23c-c17e-4e14-9fc9-58dbf6dc4744)
 
 ### 2. Configure Email Connector Properties in Profiles
 By default, externalized connector properties are added to project profiles. The properties include:
