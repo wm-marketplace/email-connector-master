@@ -34,29 +34,199 @@ mvn clean install
 You can import connector dist/email.zip artifact in WaveMaker studio application using file upload option.
 On after deploying email-connector in the WaveMaker studio application, make sure to update connector properties in the profile properties.Such as email server host name and port no, email server credentials
 
-## Use email connector in WaveMaker
 
+# Use Email Connector in WaveMaker
+
+## Introduction
+The **Email Connector** provides simplified APIs to integrate with any email service provider. It supports sending:
+
+1. Plain text messages
+2. Parameterized/templatized messages
+3. Messages with attachments
+
+## Steps to Send an Email
+
+### 1. Importing the Email Connector into Your Project
+- Download the latest **email-connector** zip [here](https://github.com/wm-marketplace/email-connector-master/releases).
+- Import the downloaded zip into your app using the **Import Resource** option under the **Connector** folder.
+
+### 2. Configure Email Connector Properties in Profiles
+By default, externalized connector properties are added to project profiles. The properties include:
+
+```properties
+connector.email.default.email.server.host=
+connector.email.default.email.server.password=
+connector.email.default.email.server.port=
+connector.email.default.email.server.username=
+connector.email.default.email.transport.protocol=smtp
+connector.email.default.email.server.sslenabled=true
 ```
 
+Set appropriate values for these properties in profiles. These can also be accessed in Java services as follows:
+
+#### Import Statement:
+```java
+import org.springframework.beans.factory.annotation.Value;
+
+@Value("${email.server.username}")
+private String fromEmailAddress;
+```
+
+### 3. Creating a Java Service
+- Create a Java Service named **EmailService**.
+- Import the **Email Connector API** class:
+
+```java
+import org.springframework.mail.SimpleMailMessage;
+import com.wavemaker.connector.email.EmailConnector;
+```
+
+- Autowire the Email Connector API:
+
+```java
 @Autowired
 private EmailConnector emailConnector;
-
-SimpleMailMessage message = new SimpleMailMessage();
-message.setSubject("WaveMaker Invitation");
-message.setTo("sender@gmail.com");
-message.setFrom("receiver@gmail.com");
-Map<String, String> props = new HashMap<>();
-props.put("user", "John");
-try {
-     emailConnector.sendSimpleMailMessageWithTemplate(message, "templates/invitationtemplate", props);
-} catch (EmailTemplateNotFoundException e) {
-     throw new RuntimeException("Exception occurred while sending email",e);
-}
-
-
-Apart from above api, email-connector provides other apis to send emails, visit EmailConnector java class in api module.
-
 ```
+
+## Sending Emails
+
+### 1. Send an Email with Plain Text
+```java
+@ExposeToClient
+public class EmailService {
+
+    private static final Logger logger = LoggerFactory.getLogger(EmailService.class);
+
+    @Autowired
+    private EmailConnector emailConnector;
+
+    @Value("${email.server.username}")
+    private String fromEmailAddress;
+
+    public void sendMailWithSimpleMessage(String toEmailAddress, String emailSubject, String emailMessage) {
+        logger.info("Sending email to {} with subject {} and message {}", toEmailAddress, emailSubject, emailMessage);
+        
+        String[] recipientList = toEmailAddress.split(",");
+        SimpleMailMessage simpleMailMessage = new SimpleMailMessage();
+        simpleMailMessage.setFrom(fromEmailAddress);
+        simpleMailMessage.setTo(recipientList);
+        simpleMailMessage.setSubject(emailSubject);
+        simpleMailMessage.setText(emailMessage);
+        
+        emailConnector.sendSimpleMailMessage(simpleMailMessage);
+    }
+}
+```
+
+### 2. Send an Email with a Templatized Message
+#### Required Imports:
+```java
+import java.util.HashMap;
+import java.util.Map;
+import com.wavemaker.connector.exception.EmailTemplateNotFoundException;
+```
+
+#### Sending an Email Using a Template:
+```java
+public void sendEmailWithTemplate(String toEmailAddress, String emailSubject) {
+    logger.info("Sending email to {} with subject {}", toEmailAddress, emailSubject);
+    String[] recipientList = toEmailAddress.split(",");
+    SimpleMailMessage message = new SimpleMailMessage();
+    message.setSubject(emailSubject);
+    message.setTo(recipientList);
+    message.setFrom(fromEmailAddress);
+    
+    Map<String, String> props = new HashMap<>();
+    props.put("user", "Mike");
+    try {
+        emailConnector.sendSimpleMailMessageWithTemplate(message, "templates/invitationtemplate", props);
+    } catch (EmailTemplateNotFoundException e) {
+        throw new RuntimeException("Email template not found", e);
+    }
+}
+```
+
+**Note:** The template **invitationtemplate.txt** should be placed inside `src/main/resources/templates`.
+![image](https://github.com/user-attachments/assets/b7cde1c5-03de-4272-b998-3c242435de7a)
+![image](https://github.com/user-attachments/assets/89375884-fc92-420b-8983-58d20d9d30e0)
+
+### 3. Send an Email with Attachments
+#### Required Imports:
+```java
+import jakarta.mail.internet.MimeBodyPart;
+import jakarta.mail.internet.MimeMessage;
+import jakarta.mail.internet.MimeMultipart;
+import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.mail.javamail.MimeMessagePreparator;
+```
+
+#### Sending an Email with an Attachment:
+```java
+public void sendMailWithMessagePreparator(String toEmailAddress, String emailSubject, String emailMessage) {
+    logger.info("Sending email to {}, with subject : {}, message : {} and mimetype content", toEmailAddress, emailSubject, emailMessage);
+    emailConnector.sendMimeMail(new MimeMessagePreparator() {
+        @Override
+        public void prepare(final MimeMessage mimeMessage) throws Exception {
+            MimeMessageHelper mimeMessageHelper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+            mimeMessageHelper.addTo(toEmailAddress);
+            mimeMessageHelper.setFrom(fromEmailAddress);
+            mimeMessageHelper.setSubject(emailSubject);
+            mimeMessageHelper.setText(emailMessage);
+            mimeMessageHelper.addAttachment("myfile", new ClassPathResource("GitLabIcon.png"));
+        }
+    });
+}
+```
+
+### 4. Send an Email with HTML Content
+```java
+public void sendMimeMail(String toEmailAddress, String emailSubject) {
+    emailConnector.sendMimeMail(new MimeMessagePreparator() {
+        @Override
+        public void prepare(final MimeMessage mimeMessage) throws Exception {
+            MimeMessageHelper mimeMessageHelper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+            mimeMessageHelper.addTo(toEmailAddress);
+            mimeMessageHelper.setFrom(fromEmailAddress);
+            mimeMessageHelper.setSubject(emailSubject);
+            MimeBodyPart mimeBodyPart = new MimeBodyPart();
+            MimeMultipart mimeMultipart = new MimeMultipart();
+            String htmlContent = "<html><h1>Hi</h1><p>Nice to meet you!</p></html>";
+            mimeBodyPart.setContent(htmlContent, "text/html");
+            mimeMultipart.addBodyPart(mimeBodyPart);
+            mimeMessageHelper.getMimeMessage().setContent(mimeMultipart);
+        }
+    });
+}
+```
+
+## Integrating with the UI
+- Create a Java Service Variable for **EmailService**.
+- Create a Java Service Variable for the Java service created in the previous steps.
+  ![image](https://github.com/user-attachments/assets/6fa9bec0-7413-489a-8f0c-03bbb6629f08)
+- Use this service variable in your UI logic as required.
+
+## Customizing Email Properties
+To customize email properties, add the following to your Java Service:
+
+#### Import Statement:
+```java
+import jakarta.annotation.PostConstruct;
+```
+Add the below code snippet to your Java Service. Here, we are setting the mail.smtp.starttls.enable property of emailconnector to false.
+#### Custom Email Property Setup:
+```java
+@PostConstruct
+public void settingEmailProperties() {
+    Properties properties = new Properties();
+    properties.setProperty("mail.smtp.starttls.enable", "false");
+    emailConnector.setEmailProperties(properties);
+}
+```
+
+---
+This document provides a complete guide to integrating and using the **WaveMaker Email Connector** to send emails in different formats and scenarios. 🚀
+
+
 
 
 
