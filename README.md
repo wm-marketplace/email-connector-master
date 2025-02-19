@@ -106,15 +106,14 @@ public class EmailService {
     private String fromEmailAddress;
 
     public void sendMailWithSimpleMessage(String toEmailAddress, String emailSubject, String emailMessage) {
-        logger.info("Sending email to {} with subject {} and message {}", toEmailAddress, emailSubject, emailMessage);
-        
+        logger.info("Sending the email to {} with subject {} and message {}", toEmailAddress, emailSubject, emailMessage);
+
         String[] recipientList = toEmailAddress.split(",");
         SimpleMailMessage simpleMailMessage = new SimpleMailMessage();
         simpleMailMessage.setFrom(fromEmailAddress);
         simpleMailMessage.setTo(recipientList);
         simpleMailMessage.setSubject(emailSubject);
         simpleMailMessage.setText(emailMessage);
-        
         emailConnector.sendSimpleMailMessage(simpleMailMessage);
     }
 }
@@ -131,20 +130,19 @@ import com.wavemaker.connector.exception.EmailTemplateNotFoundException;
 #### Sending an Email Using a Template:
 ```java
 public void sendEmailWithTemplate(String toEmailAddress, String emailSubject) {
-    logger.info("Sending email to {} with subject {}", toEmailAddress, emailSubject);
-    String[] recipientList = toEmailAddress.split(",");
-    SimpleMailMessage message = new SimpleMailMessage();
-    message.setSubject(emailSubject);
-    message.setTo(recipientList);
-    message.setFrom(fromEmailAddress);
-    
-    Map<String, String> props = new HashMap<>();
-    props.put("user", "Mike");
-    try {
-        emailConnector.sendSimpleMailMessageWithTemplate(message, "templates/invitationtemplate", props);
-    } catch (EmailTemplateNotFoundException e) {
-        throw new RuntimeException("Email template not found", e);
-    }
+        logger.info("Sending the email to {} with subject {} ", toEmailAddress, emailSubject);
+        String[] recipientList = toEmailAddress.split(",");
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setSubject(emailSubject);
+        message.setTo(recipientList);
+        message.setFrom(fromEmailAddress);
+        Map<String, String> props = new HashMap<>();
+        props.put("user", "Mike");
+        try {
+            emailConnector.sendSimpleMailMessageWithTemplate(message, "templates/invitationtemplate.txt", props);
+        } catch (EmailTemplateNotFoundException e) {
+            throw new RuntimeException("Email template not found", e);
+        }
 }
 ```
 
@@ -164,7 +162,7 @@ import org.springframework.mail.javamail.MimeMessagePreparator;
 
 #### Sending an Email with an Attachment:
 ```java
-public void sendMailWithMessagePreparator(String toEmailAddress, String emailSubject, String emailMessage) {
+public void sendMailWithAttachment(String toEmailAddress, String emailSubject, String emailMessage) {
     logger.info("Sending email to {}, with subject : {}, message : {} and mimetype content", toEmailAddress, emailSubject, emailMessage);
     emailConnector.sendMimeMail(new MimeMessagePreparator() {
         @Override
@@ -174,30 +172,67 @@ public void sendMailWithMessagePreparator(String toEmailAddress, String emailSub
             mimeMessageHelper.setFrom(fromEmailAddress);
             mimeMessageHelper.setSubject(emailSubject);
             mimeMessageHelper.setText(emailMessage);
-            mimeMessageHelper.addAttachment("myfile", new ClassPathResource("GitLabIcon.png"));
+            mimeMessageHelper.addAttachment("myfile", new ClassPathResource("files/RNDark.png"));
         }
     });
 }
 ```
-
-### 4. Send an Email with HTML Content
+### 4. Send an Email with Mime Type
 ```java
 public void sendMimeMail(String toEmailAddress, String emailSubject) {
-    emailConnector.sendMimeMail(new MimeMessagePreparator() {
-        @Override
-        public void prepare(final MimeMessage mimeMessage) throws Exception {
-            MimeMessageHelper mimeMessageHelper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
-            mimeMessageHelper.addTo(toEmailAddress);
-            mimeMessageHelper.setFrom(fromEmailAddress);
-            mimeMessageHelper.setSubject(emailSubject);
-            MimeBodyPart mimeBodyPart = new MimeBodyPart();
-            MimeMultipart mimeMultipart = new MimeMultipart();
-            String htmlContent = "<html><h1>Hi</h1><p>Nice to meet you!</p></html>";
-            mimeBodyPart.setContent(htmlContent, "text/html");
-            mimeMultipart.addBodyPart(mimeBodyPart);
-            mimeMessageHelper.getMimeMessage().setContent(mimeMultipart);
-        }
-    });
+        logger.info("Sending email to {}, with subject {} and mimetype content", toEmailAddress, emailSubject);
+
+        emailConnector.sendMimeMail(new MimeMessagePreparator() {
+            @Override
+            public void prepare(final MimeMessage mimeMessage) throws Exception {
+                MimeMessageHelper mimeMessageHelper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+                mimeMessageHelper.addTo(toEmailAddress);
+                mimeMessageHelper.setFrom(fromEmailAddress);
+                mimeMessageHelper.setSubject(emailSubject);
+
+                MimeBodyPart mimeBodyPart = new MimeBodyPart();
+                MimeMultipart mimeMultipart = new MimeMultipart();
+                String htmlContent = "<html><h1>Hi</h1><p>Nice to meet you!</p></html>";
+                mimeBodyPart.setContent(htmlContent, "text/html");
+                mimeMultipart.addBodyPart(mimeBodyPart);
+
+                mimeMessageHelper.getMimeMessage().setContent(mimeMultipart);
+            }
+        });
+}
+```
+
+### 4. Send Email with Attachment and Mime Message
+```java
+public void sendMimeMailWithAttachment(String toEmailAddress, String emailSubject) {
+        emailConnector.sendMimeMail(new MimeMessagePreparator() {
+            @Override
+            public void prepare(final MimeMessage mimeMessage) throws Exception {
+                MimeMessageHelper mimeMessageHelper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+                mimeMessageHelper.addTo(toEmailAddress);
+                mimeMessageHelper.setFrom(fromEmailAddress);
+                mimeMessageHelper.setSubject(emailSubject);
+
+                MimeMultipart mimeMultipart = new MimeMultipart();
+
+
+                MimeBodyPart htmlpart = new MimeBodyPart();
+                String htmlMessage = "<html>Hi there, ";
+                htmlMessage += "See this cool pic: <img src=\"cid:AbcXyz123\" />";
+                htmlMessage += "</html>";
+                htmlpart.setContent(htmlMessage, "text/html");
+
+
+                MimeBodyPart imagePart = new MimeBodyPart();
+                imagePart.setHeader("Content-ID", "<AbcXyz123>");
+                imagePart.setDisposition(MimeBodyPart.INLINE);
+                imagePart.attachFile(new ClassPathResource("files/RNDark.png").getFile());
+
+                mimeMultipart.addBodyPart(htmlpart);
+                mimeMultipart.addBodyPart(imagePart);
+                mimeMessageHelper.getMimeMessage().setContent(mimeMultipart);
+            }
+        });
 }
 ```
 
