@@ -224,8 +224,6 @@ public void settingEmailProperties() {
 ```
 
 ---
-This document provides a complete guide to integrating and using the **WaveMaker Email Connector** to send emails in different formats and scenarios. 🚀
-
 
 
 
